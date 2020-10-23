@@ -36,6 +36,15 @@ class Api {
 	const API_GET_ACCOUNT_INFO = 'GetAccountInfo $account$$domain$';
 	const API_GET_ACCOUNT_EFF_SETTINGS = 'GetAccountEffectiveSettings $account$$domain$';
 	const API_GET_CONTROLLER = 'GetCurrentController';
+	const API_LIST_LISTS = 'ListLists "$$"';
+	const API_CREATE_LIST = 'CreateList $list$ for $account$';
+	const API_UPDATE_LIST = 'UpdateList $list$ $settings$';
+	const API_DELETE_LIST = 'DeleteList $list$';
+	const API_GET_LIST = 'GetList $list$';
+	const API_ADD_LIST_SUBSCRIBER = 'List $list$ $operation$ $silently$ $confirm$ $email$';
+	const API_SET_POSTING_MODE = 'SetPostingMode $list$ FOR $email$ $mode$';
+	const API_LIST_SUBSCRIBERS = 'ListSubscribers $list$';
+	const API_GET_SUBSCRIBER_INFO = 'GetSubscriberInfo $list$ NAME $email$';
 
 	/** Rules structures */
 	const API_VACATION_STRUCT = '( 2, "#Vacation", (("Human Generated", "---"), (From, "not in", "#RepliedAddresses")), ( ("Reply with", "$$"), ("Remember \'From\' in", RepliedAddresses) ) )';
@@ -761,6 +770,172 @@ class Api {
 	public function clear_account_email_redirect($domain, $account) {
 		$this->set_account_email_redirect($domain, $account, '');
 		return $this->success;
+	}
+
+	public function list_lists($domain) {
+
+		$response = $this->send(str_replace('$$', $domain, self::API_LIST_LISTS));
+		$this->parse_response($response);
+
+		$lists = substr($response, 5, -3); // Chop off the 200 { whatever }
+		$lists = explode(',', $lists);
+
+		return $lists;
+	}
+
+	public function create_list($list, $account) {
+
+		$command = str_replace('$list$', $list, self::API_CREATE_LIST);
+		$command = str_replace('$account$', $account, $command);
+
+		$this->sendAndParse($command);
+		$this->clearCache();
+
+		return $this->success;
+	}
+
+	public function get_list($list) {
+		
+		$response = $this->send(str_replace('$list$', $list, self::API_GET_LIST));
+		$this->parse_response($response);
+
+		$list = substr($response, 5, -4); // Chop off the 200 { whatever }
+		$list = explode(';', $list);
+
+		return $list;
+	}
+
+	public function update_list($list, $settings = []) {
+
+		$command = str_replace('$list$', $list, self::API_UPDATE_LIST);
+		
+		$defaultSettings = $settings ?: [
+			'ArchiveMessageLimit' => '0',
+			'ArchiveSizeLimit' => '50M',
+			'ArchiveSwapPeriod' =>  '-1',
+			'Browse' =>  'nobody',
+			'ByeSubject' => '',
+			'ByeText' => '',
+			'Charset' =>  'utf-8',
+			'CheckCharset' =>  'NO',
+			'CheckDigestSubject' =>  'YES',
+			'CleanupPeriod' =>  '1h',
+			'Confirmation' =>  'NO',
+			'ConfirmationSubject' => '',
+			'ConfirmationText' => '',
+			'CoolOffPeriod' =>  '1h',
+			'DigestFormat' =>  'plain text',
+			'DigestHeader' =>  '',
+			'DigestMessageLimit' =>  '100000',
+			'DigestPeriod' =>  '100d',
+			'DigestSizeLimit' =>  'unlimited',
+			'DigestSubject' =>  '',
+			'DigestTimeOfDay' =>  '5h',
+			'DigestTrailer' =>  '',
+			'Distribution' =>  'feed',
+			'FailureNotification' =>  'NO',
+			'FatalWeight' =>  '10000',
+			'FeedHeader' =>  '',
+			'FeedPrefixMode' =>  'NO',
+			'FeedSubject' =>  '',
+			'FeedTrailer' =>  '',
+			'FirstModerated' =>  '10001',
+			'Format' =>  'anything',
+			'HideFromAddress' =>  'NO',
+			'KeepToAndCc' =>  'remove',
+			'ListFields' =>  '',
+			'LogLevel' =>  '0',
+			'MaxBounces' =>  '200',
+			'OwnerCheck' =>  'IP Addresses',
+			'PolicySubject' => '',
+			'PolicyText' => '',
+			'Postings' =>  'from anybody',
+			// 'RealName' => $RealName,
+			'Reply' =>  'to Sender',
+			'SaveReports' =>  'no',
+			'SaveRequests' =>  'no',
+			'SizeLimit' =>  'unlimited',
+			'Store' =>  'NO',
+			'Subscribe' => 'nobody',
+			'SupplFields' => '()',
+			'TillConfirmed' =>  'NO',
+			'TOCLine' =>  '',
+			'TOCTrailer' =>  '',
+			'UnsubBouncedPeriod' => '7d',
+			'WarningSubject' => '',
+			'WarningText' => ''
+		];
+
+		$ddSettings = '{';
+		foreach ($defaultSettings as $key => $value) {
+			$ddSettings .= "$key=\"$value\"; ";
+		}
+		$ddSettings .= '}';
+
+		$command = str_replace('$settings$', $ddSettings, $command);
+
+		$this->sendAndParse($command);
+		$this->clearCache();
+
+		return $this->success;
+
+	}
+
+	public function add_list_subscriber($list, $email, $operation = 'FEED', $silently = true, $confirm = false) {
+		
+		$command = str_replace('$list$', $list, self::API_ADD_LIST_SUBSCRIBER);
+		$command = str_replace('$operation$', $operation, $command);
+		$command = str_replace('$silently$', ($silently ? 'silently' : ''), $command);
+		$command = str_replace('$confirm$', ($confirm ? 'confirm' : ''), $command);
+		$command = str_replace('$email$', $email, $command);
+
+		$this->sendAndParse($command);
+		$this->clearCache();
+
+		return $this->success;
+	}
+
+	/**
+	 * $mode = [ UNMODERATED | MODERATEALL | PROHIBITED | SPECIAL | numberOfModerated ]
+	 */
+	public function set_posting_mode($list, $email, $mode) {
+
+		$command = str_replace('$list$', $list, self::API_SET_POSTING_MODE);
+		$command = str_replace('$email$', $email, $command);
+		$command = str_replace('$mode$', $mode, $command);
+
+		$this->sendAndParse($command);
+		$this->clearCache();
+
+		return $this->success;
+	}
+
+	public function list_subscribers($list) {
+		
+		$command = str_replace('$list$', $list, self::API_LIST_SUBSCRIBERS);
+		$this->sendAndParse($command);
+		// $response = $this->send($command);
+		// $subscribers = $this->parse_response($response);
+		// $subscribers = substr($response, 5, -2); // Chop off the 200 { whatever }
+		// $subscribers = explode(',', $subscribers);
+		return $this->output;
+	}
+
+	public function get_subscriber_info($list, $email) {
+		
+		$command = str_replace('$list$', $list, self::API_GET_SUBSCRIBER_INFO);
+		$command = str_replace('$email$', $email, $command);
+		
+		$this->sendAndParse($command);
+
+		return $this->output;
+	}
+
+	public function delete_list($list) {
+		
+		$command = str_replace('$list$', $list, self::API_DELETE_LIST);
+		$this->sendAndParse($command);
+		return true;
 	}
 
 	/**
