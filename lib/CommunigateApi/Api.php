@@ -2,8 +2,6 @@
 
 namespace CommunigateApi;
 
-use CommunigateApi\ApiException;
-
 /**
  * CommunigateApi API
  *
@@ -32,6 +30,8 @@ class Api {
 	const API_VERIFY_PASSWORD = 'VerifyAccountPassword "$account$" PASSWORD "$password$"';
 	const API_RENAME_ACCOUNT = 'RenameAccount "$old_account$" into "$new_account$"';
 	const API_LIST_FORWARDER = 'ListForwarders $$';
+	const API_CREATE_FORWARDER = 'CreateForwarder $forwarder$$domain$ TO $address$';
+	const API_DELETE_FORWARDER = 'DeleteForwarder $forwarder$$domain$';
 	const API_GET_FORWARDER = 'GetForwarder $forwarder$$domain$';
 	const API_GET_ACCOUNT_INFO = 'GetAccountInfo $account$$domain$';
 	const API_GET_ACCOUNT_EFF_SETTINGS = 'GetAccountEffectiveSettings $account$$domain$';
@@ -243,7 +243,7 @@ class Api {
 
 			foreach ($this->output as $item) {
 
-				$this->parse_response(str_replace('$domain$', '@' . $domain, str_replace('$forwarder$', $item, self::API_GET_FORWARDER)));
+				$this->sendAndParse(str_replace('$domain$', '@' . $domain, str_replace('$forwarder$', $item, self::API_GET_FORWARDER)));
 
 				$forwarders[$item] = $this->output[0];
 			}
@@ -251,6 +251,19 @@ class Api {
 
 		return $forwarders;
 
+	}
+
+	public function create_forwarder($domain, $forwarder, $address)	{
+		
+		$this->sendAndParse(str_replace('$domain$', '@' . $domain, str_replace('$forwarder$', $forwarder, str_replace('$address$', $address, self::API_CREATE_FORWARDER))));
+
+		return $this->success;
+	}
+
+	public function delete_forwarder($domain, $forwarder) {
+
+		$this->sendAndParse(str_replace('$domain$', '@' . $domain, str_replace('$forwarder$', $forwarder, self::API_DELETE_FORWARDER)));
+		return $this->success;
 	}
 
 	/**
